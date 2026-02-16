@@ -1,0 +1,86 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "clash-verge-rev",
+  "title": "Clash Verge Rev",
+  "description": "Manage Clash Verge Rev subscriptions, proxy groups, and proxy modes",
+  "icon": "extension-icon.png",
+  "author": "your-name",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "manage-proxies",
+      "title": "Manage Proxies",
+      "subtitle": "Proxy Groups",
+      "description": "View and switch proxy nodes in different rule groups",
+      "mode": "view"
+    },
+    {
+      "name": "manage-profiles",
+      "title": "Manage Profiles",
+      "subtitle": "Subscriptions",
+      "description": "View, switch, and update subscription profiles",
+      "mode": "view"
+    },
+    {
+      "name": "switch-mode",
+      "title": "Switch Mode",
+      "subtitle": "Rule / Global / Direct",
+      "description": "Quickly switch between proxy modes",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "controllerPort",
+      "type": "textfield",
+      "required": false,
+      "default": "9090",
+      "title": "Controller Port",
+      "description": "Mihomo external controller port (default: 9090)",
+      "placeholder": "9090"
+    },
+    {
+      "name": "secret",
+      "type": "password",
+      "required": false,
+      "title": "API Secret",
+      "description": "Mihomo external controller secret (found in Clash Verge Rev settings)",
+      "placeholder": "Enter your API secret"
+    },
+    {
+      "name": "defaultSearchMode",
+      "type": "dropdown",
+      "required": false,
+      "default": "groups",
+      "title": "Default Search Mode",
+      "description": "Default search target in Manage Proxies. Use ':' prefix to search the other type.",
+      "data": [
+        {
+          "title": "Groups",
+          "value": "groups"
+        },
+        {
+          "title": "Nodes",
+          "value": "nodes"
+        }
+      ]
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.104.1",
+    "@raycast/utils": "^1.17.0",
+    "node-fetch": "^3.3.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.8.10",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "dev": "ray develop",
+    "build": "ray build",
+    "lint": "ray lint",
+    "fix-lint": "ray lint --fix"
+  }
+}
