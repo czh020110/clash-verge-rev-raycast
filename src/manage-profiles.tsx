@@ -18,10 +18,10 @@ import {
   getTrafficInfo,
   formatTime,
   formatExpire,
+  restartClashVerge,
   ProfileItem,
   ProfilesConfig,
 } from "./utils/profiles";
-import { reloadConfigs } from "./utils/api";
 
 // --- Type icons ---
 
@@ -81,26 +81,31 @@ export default function ManageProfiles() {
       await showToast({
         style: Toast.Style.Animated,
         title: "Activating profile...",
+        message: "Updating config and restarting Clash Verge Rev",
       });
 
-      // Update profiles.yaml
+      // Step 1: Update profiles.yaml to set new current profile
       activateProfile(profile.uid);
+      console.log("[Profile] Updated profiles.yaml, current =", profile.uid);
 
-      // Reload Clash configs to apply the change
-      try {
-        await reloadConfigs();
-      } catch {
-        // Reload might fail briefly, but profile is already activated
-      }
+      // Step 2: Restart Clash Verge Rev to re-process merged config
+      await showToast({
+        style: Toast.Style.Animated,
+        title: "Restarting Clash Verge Rev...",
+        message: "Please wait while the app restarts",
+      });
+
+      await restartClashVerge();
 
       fetchProfiles();
 
-      showToast({
+      await showToast({
         style: Toast.Style.Success,
         title: "Profile activated",
-        message: profile.name || profile.uid,
+        message: `Switched to: ${profile.name || profile.uid}`,
       });
     } catch (error) {
+      console.error("[Profile] Activation failed:", error);
       showToast({
         style: Toast.Style.Failure,
         title: "Failed to activate profile",

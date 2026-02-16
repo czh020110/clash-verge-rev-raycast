@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import * as yaml from "js-yaml";
+import { exec } from "child_process";
 
 // --- Types ---
 
@@ -146,4 +147,97 @@ export function getTrafficInfo(profile: ProfileItem): string | undefined {
 /** Get Clash Verge Rev config directory path */
 export function getConfigDir(): string {
   return getClashVergeDir();
+}
+
+/** Helper to run a shell command and return stdout */
+function runCommand(cmd: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    exec(cmd, { encoding: "utf-8" }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`[Shell] Command failed: ${cmd}`, stderr);
+        reject(error);
+      } else {
+        resolve(stdout.trim());
+      }
+    });
+  });
+}
+
+/**
+ * Restart Clash Verge Rev application.
+ * 1. Get exe path from running process
+ * 2. Kill the process
+ * 3. Wait briefly
+ * 4. Relaunch
+ */
+export async function restartClashVerge(): Promise<void> {
+  console.log("[Restart] Starting Clash Verge Rev restart...");
+
+  // Step 1: Get executable path from running process
+  let exePath = "";
+  try {
+    // Process name is "clash-verge" (hyphenated, no .exe)
+    const psCmd = `powershell -NoProfile -Command "(Get-Process 'clash-verge' -ErrorAction SilentlyContinue | Select-Object -First 1).Path"`;
+    exePath = await runCommand(psCmd);
+    console.log("[Restart] Found exe path:", exePath);
+  } catch {
+    console.log("[Restart] Could not get exe path from running process");
+  }
+
+  // Fallback: try common install locations
+  if (!exePath) {
+    const candidates = [
+      path.join(
+        os.homedir(),
+        "AppData",
+        "Local",
+        "Clash Verge",
+        "clash-verge.exe",
+      ),
+      path.join(
+        os.homedir(),
+        "AppData",
+        "Local",
+        "clash-verge",
+        "clash-verge.exe",
+      ),
+      "C:\\Program Files\\Clash Verge\\clash-verge.exe",
+      "C:\\Program Files (x86)\\Clash Verge\\clash-verge.exe",
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        exePath = candidate;
+        console.log("[Restart] Found exe at fallback path:", exePath);
+        break;
+      }
+    }
+  }
+
+  // Step 2: Kill existing process
+  try {
+    await runCommand('taskkill /f /im "clash-verge.exe"');
+    console.log("[Restart] Killed Clash Verge process");
+  } catch {
+    console.log("[Restart] No Clash Verge process to kill (or kill failed)");
+  }
+
+  // Note: verge-mihomo.exe is managed by clash-verge-service.exe
+  // and will be restarted automatically when Clash Verge relaunches
+
+  // Step 3: Wait for process to fully exit
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  // Step 4: Relaunch
+  if (exePath && fs.existsSync(exePath)) {
+    console.log("[Restart] Relaunching:", exePath);
+    exec(`start "" "${exePath}"`, { encoding: "utf-8" });
+  } else {
+    // Fallback: try using Start Menu shortcut
+    console.log("[Restart] Using Start Menu shortcut to relaunch");
+    exec('start "" "Clash Verge"', { shell: "cmd.exe", encoding: "utf-8" });
+  }
+
+  // Wait for app to initialize and process configs
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  console.log("[Restart] Restart complete");
 }
