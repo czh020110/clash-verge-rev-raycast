@@ -13,7 +13,9 @@ type ExtensionPreferences = {
   /** API Secret - Mihomo external controller secret (found in Clash Verge Rev settings) */
   "secret"?: string,
   /** Default Search Mode - Default search target in Manage Proxies. Use ':' prefix to search the other type. */
-  "defaultSearchMode": "groups" | "nodes"
+  "defaultSearchMode": "groups" | "nodes",
+  /** Default Sort Order - Default sorting method for View Connections. */
+  "defaultSortOrder": "downSpeed" | "upSpeed" | "download" | "upload" | "time" | "host"
 }
 
 /** Preferences accessible in all the extension's commands */

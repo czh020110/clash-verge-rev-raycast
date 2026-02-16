@@ -9,12 +9,18 @@ import {
   Toast,
   confirmAlert,
   Alert,
+  getPreferenceValues,
 } from "@raycast/api";
 import {
   getConnectionStreamConfig,
   closeConnection,
   closeAllConnections,
 } from "./utils/api";
+
+interface Preferences {
+  secret?: string;
+  defaultSortOrder?: string;
+}
 
 interface ConnectionItem {
   id: string;
@@ -42,7 +48,13 @@ interface Speed {
   down: number;
 }
 
-type SortOption = "downSpeed" | "upSpeed" | "download" | "upload" | "time";
+type SortOption =
+  | "downSpeed"
+  | "upSpeed"
+  | "download"
+  | "upload"
+  | "time"
+  | "host";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -57,17 +69,29 @@ function formatSpeed(bytesPerSec: number): string {
 }
 
 export default function ViewConnections() {
+  const prefs = getPreferenceValues<Preferences>();
   const [connections, setConnections] = useState<ConnectionItem[]>([]);
   const [speeds, setSpeeds] = useState<Record<string, Speed>>({});
   const [isConnected, setIsConnected] = useState(false);
   const [showDetail, setShowDetail] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortOption>("downSpeed");
+  const [sortBy, setSortBy] = useState<SortOption>(
+    (prefs.defaultSortOrder as SortOption) || "downSpeed",
+  );
 
   // Store previous snapshot to calculate speed
   const prevConnectionsRef = useRef<Record<string, ConnectionItem>>({});
+  const prevGlobalRef = useRef<{ down: number; up: number } | null>(null);
   const lastSnapshotTimeRef = useRef<number>(Date.now());
   const wsRef = useRef<WebSocket | null>(null);
+
+  // State for global traffic stats
+  const [traffic, setTraffic] = useState({
+    upSpeed: 0,
+    downSpeed: 0,
+    totalUp: 0,
+    totalDown: 0,
+  });
 
   const connect = useCallback(() => {
     // Clean up previous connection if exists
@@ -83,12 +107,17 @@ export default function ViewConnections() {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        if (ws !== wsRef.current) return;
         console.log("[Connections] Connected");
         setIsConnected(true);
         setErrorMsg(null);
+        // Reset refs on new connection
+        prevGlobalRef.current = null;
+        lastSnapshotTimeRef.current = Date.now();
       };
 
       ws.onmessage = (event) => {
+        if (ws !== wsRef.current) return;
         try {
           const data = JSON.parse(event.data);
           // data structure: { downloadTotal, uploadTotal, connections: [...] }
@@ -97,6 +126,7 @@ export default function ViewConnections() {
             const now = Date.now();
             const timeDiff = (now - lastSnapshotTimeRef.current) / 1000; // in seconds
 
+            // 1. Calculate Per-Connection Speed (for sorting/display)
             if (timeDiff > 0) {
               const newSpeeds: Record<string, Speed> = {};
               newConnections.forEach((conn) => {
@@ -109,21 +139,60 @@ export default function ViewConnections() {
                     up: Math.max(0, upSpeed),
                   };
                 } else {
-                  // New connection, speed is 0 for now or calculated from start if needed,
-                  // but straightforward to just wait for next tick
                   newSpeeds[conn.id] = { down: 0, up: 0 };
                 }
               });
               setSpeeds(newSpeeds);
             }
 
+            // 2. Calculate Global Speed & Volume
+            const currentTotalDown = data.downloadTotal || 0;
+            const currentTotalUp = data.uploadTotal || 0;
+
+            let globalDownSpeed = 0;
+            let globalUpSpeed = 0;
+
+            if (prevGlobalRef.current && timeDiff > 0) {
+              globalDownSpeed = Math.max(
+                0,
+                (currentTotalDown - prevGlobalRef.current.down) / timeDiff,
+              );
+              globalUpSpeed = Math.max(
+                0,
+                (currentTotalUp - prevGlobalRef.current.up) / timeDiff,
+              );
+
+              // Debug logs
+              if (globalDownSpeed > 1024 * 1024 * 100) {
+                // Log if > 100MB/s (suspicious)
+                console.log("[Debug] Suspicious Speed:", {
+                  currentTotalDown,
+                  prevTotalDown: prevGlobalRef.current.down,
+                  diff: currentTotalDown - prevGlobalRef.current.down,
+                  timeDiff,
+                  calculatedSpeed: globalDownSpeed,
+                });
+              }
+            }
+
+            setTraffic({
+              downSpeed: globalDownSpeed,
+              upSpeed: globalUpSpeed,
+              totalDown: currentTotalDown,
+              totalUp: currentTotalUp,
+            });
+
             // Update refs
             const newConnMap: Record<string, ConnectionItem> = {};
             newConnections.forEach((c) => (newConnMap[c.id] = c));
             prevConnectionsRef.current = newConnMap;
+            prevGlobalRef.current = {
+              down: currentTotalDown,
+              up: currentTotalUp,
+            };
             lastSnapshotTimeRef.current = now;
 
-            // Update connections state (sorting happens in render or effect)
+            // Update connections state
             setConnections(newConnections);
           }
         } catch (err) {
@@ -132,11 +201,13 @@ export default function ViewConnections() {
       };
 
       ws.onclose = () => {
+        if (ws !== wsRef.current) return;
         console.log("[Connections] Closed");
         setIsConnected(false);
       };
 
       ws.onerror = (err) => {
+        if (ws !== wsRef.current) return;
         console.error("[Connections] Error", err);
         setErrorMsg("Connection Failed");
         setIsConnected(false);
@@ -187,17 +258,6 @@ export default function ViewConnections() {
     }
   };
 
-  // Calculate Max Speeds
-  const maxSpeed = useMemo(() => {
-    let maxDown = 0;
-    let maxUp = 0;
-    Object.values(speeds).forEach((s) => {
-      if (s.down > maxDown) maxDown = s.down;
-      if (s.up > maxUp) maxUp = s.up;
-    });
-    return { down: maxDown, up: maxUp };
-  }, [speeds]);
-
   // Sort Connections
   const sortedConnections = useMemo(() => {
     return [...connections].sort((a, b) => {
@@ -218,6 +278,11 @@ export default function ViewConnections() {
           return b.upload - a.upload;
         case "time":
           return new Date(b.start).getTime() - new Date(a.start).getTime();
+        case "host": {
+          const hostA = a.metadata.host || a.metadata.destinationIP || "";
+          const hostB = b.metadata.host || b.metadata.destinationIP || "";
+          return hostA.localeCompare(hostB);
+        }
         default:
           return 0;
       }
@@ -231,7 +296,7 @@ export default function ViewConnections() {
       searchBarPlaceholder="Filter connections..."
       navigationTitle={
         isConnected
-          ? `↓ ${formatSpeed(maxSpeed.down)}  ↑ ${formatSpeed(maxSpeed.up)}`
+          ? `Speed: ↓ ${formatSpeed(traffic.downSpeed)} ↑ ${formatSpeed(traffic.upSpeed)}  |  Total: ↓ ${formatBytes(traffic.totalDown)} ↑ ${formatBytes(traffic.totalUp)}`
           : "View Connections"
       }
       searchBarAccessory={
@@ -256,6 +321,11 @@ export default function ViewConnections() {
             title="Start Time"
             value="time"
             icon={Icon.Clock}
+          />
+          <List.Dropdown.Item
+            title="Host Name"
+            value="host"
+            icon={Icon.Globe}
           />
         </List.Dropdown>
       }
