@@ -26,6 +26,8 @@ declare namespace Preferences {
   export type ManageProfiles = ExtensionPreferences & {}
   /** Preferences accessible in the `switch-mode` command */
   export type SwitchMode = ExtensionPreferences & {}
+  /** Preferences accessible in the `view-logs` command */
+  export type ViewLogs = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -38,5 +40,7 @@ declare namespace Arguments {
   export type ManageProfiles = {}
   /** Arguments passed to the `switch-mode` command */
   export type SwitchMode = {}
+  /** Arguments passed to the `view-logs` command */
+  export type ViewLogs = {}
 }
 

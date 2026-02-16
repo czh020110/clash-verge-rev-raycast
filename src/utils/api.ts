@@ -63,6 +63,17 @@ function getHeaders(): Record<string, string> {
   return headers;
 }
 
+/** Get config for streaming logs from Mihomo */
+export function getLogStreamConfig(level = "info"): {
+  url: string;
+  headers: Record<string, string>;
+} {
+  return {
+    url: `${getApiBase()}/logs?level=${level}`,
+    headers: getHeaders(),
+  };
+}
+
 // --- API Methods ---
 
 async function apiGet<T>(path: string): Promise<T> {

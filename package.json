@@ -35,6 +35,13 @@
       "subtitle": "Rule / Global / Direct",
       "description": "Quickly switch between proxy modes",
       "mode": "view"
+    },
+    {
+      "name": "view-logs",
+      "title": "View Logs",
+      "subtitle": "Real-time Logs",
+      "description": "View Clash Verge Rev logs in real-time",
+      "mode": "view"
     }
   ],
   "preferences": [
