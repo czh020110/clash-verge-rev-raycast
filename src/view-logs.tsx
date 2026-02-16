@@ -244,7 +244,6 @@ export default function ViewLogs() {
                 detail={
                   showDetail ? (
                     <List.Item.Detail
-                      markdown={`\`\`\`\n${log.payload}\n\`\`\``}
                       metadata={
                         <List.Item.Detail.Metadata>
                           <List.Item.Detail.Metadata.TagList title="Level">
@@ -311,12 +310,11 @@ export default function ViewLogs() {
                               text={parsed.detail}
                             />
                           )}
-                          {!parsed && (
-                            <List.Item.Detail.Metadata.Label
-                              title="Raw"
-                              text={log.payload}
-                            />
-                          )}
+                          <List.Item.Detail.Metadata.Separator />
+                          <List.Item.Detail.Metadata.Label
+                            title="Full Log"
+                            text={log.payload}
+                          />
                         </List.Item.Detail.Metadata>
                       }
                     />
