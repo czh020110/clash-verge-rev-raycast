@@ -18,10 +18,11 @@ import {
   getTrafficInfo,
   formatTime,
   formatExpire,
-  restartClashVerge,
+  switchProfileFast,
   ProfileItem,
   ProfilesConfig,
 } from "./utils/profiles";
+import { reloadConfigs } from "./utils/api";
 
 // --- Type icons ---
 
@@ -80,22 +81,20 @@ export default function ManageProfiles() {
     try {
       await showToast({
         style: Toast.Style.Animated,
-        title: "Activating profile...",
-        message: "Updating config and restarting Clash Verge Rev",
+        title: "Switching profile...",
       });
 
-      // Step 1: Update profiles.yaml to set new current profile
+      // Step 1: Update profiles.yaml
       activateProfile(profile.uid);
-      console.log("[Profile] Updated profiles.yaml, current =", profile.uid);
 
-      // Step 2: Restart Clash Verge Rev to re-process merged config
-      await showToast({
-        style: Toast.Style.Animated,
-        title: "Restarting Clash Verge Rev...",
-        message: "Please wait while the app restarts",
-      });
+      // Step 2: Merge infrastructure + new profile content, write clash-verge.yaml
+      if (profile.file) {
+        const configPath = switchProfileFast(profile.file);
+        console.log("[Profile] Fast switch: merged config at", configPath);
 
-      await restartClashVerge();
+        // Step 3: Reload Mihomo core with the merged config
+        await reloadConfigs(configPath);
+      }
 
       fetchProfiles();
 
