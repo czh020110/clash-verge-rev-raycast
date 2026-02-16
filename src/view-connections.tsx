@@ -289,6 +289,25 @@ export default function ViewConnections() {
     });
   }, [connections, speeds, sortBy]);
 
+  // Sort Options Definition
+  const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+    { value: "downSpeed", label: "Download Speed" },
+    { value: "upSpeed", label: "Upload Speed" },
+    { value: "download", label: "Total Download" },
+    { value: "upload", label: "Total Upload" },
+    { value: "time", label: "Start Time" },
+    { value: "host", label: "Host Name" },
+  ];
+
+  const cycleSort = (direction: 1 | -1) => {
+    const currentIndex = SORT_OPTIONS.findIndex((opt) => opt.value === sortBy);
+    let newIndex = currentIndex + direction;
+    if (newIndex < 0) newIndex = SORT_OPTIONS.length - 1;
+    if (newIndex >= SORT_OPTIONS.length) newIndex = 0;
+    setSortBy(SORT_OPTIONS[newIndex].value);
+    showToast(Toast.Style.Success, `Sorted by ${SORT_OPTIONS[newIndex].label}`);
+  };
+
   return (
     <List
       isLoading={!errorMsg && !isConnected && connections.length === 0}
@@ -305,28 +324,24 @@ export default function ViewConnections() {
           onChange={(newValue) => setSortBy(newValue as SortOption)}
           value={sortBy}
         >
-          <List.Dropdown.Item
-            title="Download Speed"
-            value="downSpeed"
-            icon={Icon.Download}
-          />
-          <List.Dropdown.Item
-            title="Upload Speed"
-            value="upSpeed"
-            icon={Icon.Upload}
-          />
-          <List.Dropdown.Item title="Total Download" value="download" />
-          <List.Dropdown.Item title="Total Upload" value="upload" />
-          <List.Dropdown.Item
-            title="Start Time"
-            value="time"
-            icon={Icon.Clock}
-          />
-          <List.Dropdown.Item
-            title="Host Name"
-            value="host"
-            icon={Icon.Globe}
-          />
+          {SORT_OPTIONS.map((opt) => (
+            <List.Dropdown.Item
+              key={opt.value}
+              title={opt.label}
+              value={opt.value}
+              icon={
+                opt.value === "downSpeed"
+                  ? Icon.Download
+                  : opt.value === "upSpeed"
+                    ? Icon.Upload
+                    : opt.value === "time"
+                      ? Icon.Clock
+                      : opt.value === "host"
+                        ? Icon.Globe
+                        : undefined
+              }
+            />
+          ))}
         </List.Dropdown>
       }
     >
@@ -364,11 +379,11 @@ export default function ViewConnections() {
               <List.Item
                 key={conn.id}
                 title={host}
-                subtitle={showDetail ? "" : conn.rule}
+                subtitle={showDetail ? "" : conn.rulePayload || conn.rule}
                 icon={
                   conn.metadata.network === "tcp"
-                    ? { source: Icon.Globe, tintColor: Color.Blue }
-                    : { source: Icon.Bolt, tintColor: Color.Yellow }
+                    ? { source: Icon.Globe, tintColor: Color.SecondaryText }
+                    : { source: Icon.Bolt, tintColor: Color.SecondaryText }
                 }
                 accessories={
                   showDetail
@@ -475,10 +490,28 @@ export default function ViewConnections() {
                       shortcut={{ modifiers: ["ctrl", "shift"], key: "x" }}
                       onAction={handleCloseAll}
                     />
-                    <Action.CopyToClipboard title="Copy Host" content={host} />
+                    <Action.CopyToClipboard
+                      title="Copy Host"
+                      content={host}
+                      shortcut={{ modifiers: ["ctrl"], key: "c" }}
+                    />
                     <Action.CopyToClipboard
                       title="Copy Chain"
                       content={chains}
+                      shortcut={{ modifiers: ["ctrl", "shift"], key: "c" }}
+                    />
+                    {/* Shortcuts for sorting */}
+                    <Action
+                      title="Sort Previous"
+                      icon={Icon.ArrowLeft}
+                      shortcut={{ modifiers: ["ctrl"], key: "arrowLeft" }}
+                      onAction={() => cycleSort(-1)}
+                    />
+                    <Action
+                      title="Sort Next"
+                      icon={Icon.ArrowRight}
+                      shortcut={{ modifiers: ["ctrl"], key: "arrowRight" }}
+                      onAction={() => cycleSort(1)}
                     />
                   </ActionPanel>
                 }
