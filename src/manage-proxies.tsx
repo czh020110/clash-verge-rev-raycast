@@ -8,6 +8,7 @@ import {
   showToast,
   Toast,
   getPreferenceValues,
+  LaunchProps,
 } from "@raycast/api";
 import {
   getProxies,
@@ -78,12 +79,6 @@ function proxyTypeTag(type: string): string {
 
 // --- Search logic ---
 
-/**
- * Parse search text to determine search mode and keyword.
- * - Default mode searches the defaultSearchMode type directly.
- * - Prefix with ":" to search the other type.
- *   e.g. if default is "groups", typing ":Japan" searches nodes.
- */
 function parseSearch(
   searchText: string,
   defaultMode: "groups" | "nodes",
@@ -97,14 +92,17 @@ function parseSearch(
 
 // --- Main Command ---
 
-export default function ManageProxies() {
+export default function ManageProxies(
+  props: LaunchProps<{ arguments: { query?: string } }>,
+) {
   const prefs = getPreferenceValues<ProxyPreferences>();
   const defaultSearchMode = prefs.defaultSearchMode || "groups";
+  const initialQuery = props.arguments.query || "";
 
   const [groups, setGroups] = useState<ProxyGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
-  const [searchText, setSearchText] = useState<string>("");
+  const [searchText, setSearchText] = useState<string>(initialQuery);
 
   const fetchProxies = useCallback(async () => {
     try {
@@ -126,6 +124,29 @@ export default function ManageProxies() {
   useEffect(() => {
     fetchProxies();
   }, [fetchProxies]);
+
+  // --- Group navigation ---
+
+  const navigateGroup = useCallback(
+    (direction: "prev" | "next") => {
+      if (groups.length === 0) return;
+      // Build list: ["" (All Groups), group1, group2, ...]
+      const allValues = ["", ...groups.map((g) => g.name)];
+      const currentIdx = allValues.indexOf(selectedGroup);
+      let nextIdx: number;
+      if (direction === "next") {
+        nextIdx = currentIdx < allValues.length - 1 ? currentIdx + 1 : 0;
+      } else {
+        nextIdx = currentIdx > 0 ? currentIdx - 1 : allValues.length - 1;
+      }
+      setSelectedGroup(allValues[nextIdx]);
+      const label = allValues[nextIdx] || "All Groups";
+      showToast({ style: Toast.Style.Success, title: `Group: ${label}` });
+    },
+    [groups, selectedGroup],
+  );
+
+  // --- Handlers ---
 
   const handleSelect = async (groupName: string, proxyName: string) => {
     try {
@@ -200,24 +221,73 @@ export default function ManageProxies() {
     }
   };
 
+  // --- Common actions builder ---
+
+  function buildActions(opts: {
+    proxyName: string;
+    groupName: string;
+    group: ProxyGroup;
+    showViewGroup?: boolean;
+  }) {
+    return (
+      <ActionPanel>
+        <ActionPanel.Section title="Proxy">
+          <Action
+            title="Switch to This Node"
+            icon={Icon.ArrowRight}
+            onAction={() => handleSelect(opts.groupName, opts.proxyName)}
+          />
+          <Action
+            title="Test Delay"
+            icon={Icon.Stopwatch}
+            shortcut={{ modifiers: ["ctrl"], key: "return" }}
+            onAction={() => handleTestDelay(opts.proxyName)}
+          />
+          <Action
+            title="Test All Delays"
+            icon={Icon.Signal3}
+            shortcut={{ modifiers: ["ctrl", "shift"], key: "return" }}
+            onAction={() => handleTestAllDelays(opts.group)}
+          />
+        </ActionPanel.Section>
+        <ActionPanel.Section title="Navigation">
+          <Action
+            title="Previous Group"
+            icon={Icon.ArrowLeft}
+            shortcut={{ modifiers: ["ctrl"], key: "arrowLeft" }}
+            onAction={() => navigateGroup("prev")}
+          />
+          <Action
+            title="Next Group"
+            icon={Icon.ArrowRight}
+            shortcut={{ modifiers: ["ctrl"], key: "arrowRight" }}
+            onAction={() => navigateGroup("next")}
+          />
+          <Action
+            title="Refresh"
+            icon={Icon.ArrowClockwise}
+            shortcut={{ modifiers: ["ctrl"], key: "r" }}
+            onAction={fetchProxies}
+          />
+        </ActionPanel.Section>
+      </ActionPanel>
+    );
+  }
+
   // --- Filtered data based on search ---
 
   const { mode: searchMode, keyword } = parseSearch(
     searchText,
     defaultSearchMode,
   );
-
-  // When the dropdown selects a specific group, show that group's nodes
   const currentGroup = groups.find((g) => g.name === selectedGroup);
 
   const filteredData = useMemo(() => {
     const lowerKeyword = keyword.toLowerCase();
 
-    // If a specific group is selected via dropdown, always show its nodes
     if (selectedGroup && currentGroup) {
       if (!keyword)
         return { type: "single-group" as const, group: currentGroup };
-      // Filter nodes within the selected group
       const filteredProxies = currentGroup.proxies.filter((p) =>
         p.name.toLowerCase().includes(lowerKeyword),
       );
@@ -227,20 +297,16 @@ export default function ManageProxies() {
       };
     }
 
-    // No dropdown selection — use search mode
     if (!keyword) {
-      // No search text → show all groups with all nodes
       return { type: "all-groups" as const, groups };
     }
 
     if (searchMode === "groups") {
-      // Filter groups by name
       const filtered = groups.filter((g) =>
         g.name.toLowerCase().includes(lowerKeyword),
       );
       return { type: "all-groups" as const, groups: filtered };
     } else {
-      // Search nodes across all groups
       const results: { group: ProxyGroup; proxy: ProxyItem }[] = [];
       for (const group of groups) {
         for (const proxy of group.proxies) {
@@ -253,7 +319,6 @@ export default function ManageProxies() {
     }
   }, [groups, selectedGroup, currentGroup, searchMode, keyword]);
 
-  // Dynamic placeholder hint
   const altType = defaultSearchMode === "groups" ? "nodes" : "groups";
   const placeholderHint = `Search ${defaultSearchMode}... (prefix ":" to search ${altType})`;
 
@@ -265,7 +330,7 @@ export default function ManageProxies() {
       filtering={false}
       searchBarAccessory={
         <List.Dropdown
-          tooltip="Select Proxy Group"
+          tooltip="Select Proxy Group (Ctrl+← / Ctrl+→)"
           value={selectedGroup}
           onChange={setSelectedGroup}
         >
@@ -312,41 +377,16 @@ export default function ManageProxies() {
                     ? [{ tag: { value: "Active", color: Color.Green } }]
                     : []),
                 ]}
-                actions={
-                  <ActionPanel>
-                    <Action
-                      title="Switch to This Node"
-                      icon={Icon.ArrowRight}
-                      onAction={() =>
-                        handleSelect(filteredData.group.name, proxy.name)
-                      }
-                    />
-                    <Action
-                      title="Test Delay"
-                      icon={Icon.Stopwatch}
-                      shortcut={{ modifiers: ["cmd"], key: "t" }}
-                      onAction={() => handleTestDelay(proxy.name)}
-                    />
-                    <Action
-                      title="Test All Delays"
-                      icon={Icon.Signal3}
-                      shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
-                      onAction={() => handleTestAllDelays(filteredData.group)}
-                    />
-                    <Action
-                      title="Refresh"
-                      icon={Icon.ArrowClockwise}
-                      shortcut={{ modifiers: ["cmd"], key: "r" }}
-                      onAction={fetchProxies}
-                    />
-                  </ActionPanel>
-                }
+                actions={buildActions({
+                  proxyName: proxy.name,
+                  groupName: filteredData.group.name,
+                  group: filteredData.group,
+                })}
               />
             );
           })}
         </List.Section>
       ) : filteredData.type === "node-search" ? (
-        // Node search results — flat list with group tag
         <List.Section
           title="Node Search Results"
           subtitle={`${filteredData.results.length} matches`}
@@ -379,41 +419,17 @@ export default function ManageProxies() {
                     : []),
                   { tag: group.name },
                 ]}
-                actions={
-                  <ActionPanel>
-                    <Action
-                      title="Switch to This Node"
-                      icon={Icon.ArrowRight}
-                      onAction={() => handleSelect(group.name, proxy.name)}
-                    />
-                    <Action
-                      title={`View All ${group.name} Nodes`}
-                      icon={Icon.List}
-                      onAction={() => {
-                        setSelectedGroup(group.name);
-                        setSearchText("");
-                      }}
-                    />
-                    <Action
-                      title="Test Delay"
-                      icon={Icon.Stopwatch}
-                      shortcut={{ modifiers: ["cmd"], key: "t" }}
-                      onAction={() => handleTestDelay(proxy.name)}
-                    />
-                    <Action
-                      title="Refresh"
-                      icon={Icon.ArrowClockwise}
-                      shortcut={{ modifiers: ["cmd"], key: "r" }}
-                      onAction={fetchProxies}
-                    />
-                  </ActionPanel>
-                }
+                actions={buildActions({
+                  proxyName: proxy.name,
+                  groupName: group.name,
+                  group,
+                  showViewGroup: true,
+                })}
               />
             );
           })}
         </List.Section>
       ) : (
-        // All groups view — show every node, no truncation
         filteredData.groups.map((group) => (
           <List.Section
             key={group.name}
@@ -448,38 +464,12 @@ export default function ManageProxies() {
                       : []),
                     { tag: group.name },
                   ]}
-                  actions={
-                    <ActionPanel>
-                      <Action
-                        title="Switch to This Node"
-                        icon={Icon.ArrowRight}
-                        onAction={() => handleSelect(group.name, proxy.name)}
-                      />
-                      <Action
-                        title={`View Only ${group.name}`}
-                        icon={Icon.List}
-                        onAction={() => setSelectedGroup(group.name)}
-                      />
-                      <Action
-                        title="Test Delay"
-                        icon={Icon.Stopwatch}
-                        shortcut={{ modifiers: ["cmd"], key: "t" }}
-                        onAction={() => handleTestDelay(proxy.name)}
-                      />
-                      <Action
-                        title="Test All Delays"
-                        icon={Icon.Signal3}
-                        shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
-                        onAction={() => handleTestAllDelays(group)}
-                      />
-                      <Action
-                        title="Refresh"
-                        icon={Icon.ArrowClockwise}
-                        shortcut={{ modifiers: ["cmd"], key: "r" }}
-                        onAction={fetchProxies}
-                      />
-                    </ActionPanel>
-                  }
+                  actions={buildActions({
+                    proxyName: proxy.name,
+                    groupName: group.name,
+                    group,
+                    showViewGroup: true,
+                  })}
                 />
               );
             })}

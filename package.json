@@ -3,7 +3,7 @@
   "name": "clash-verge-rev",
   "title": "Clash Verge Rev",
   "description": "Manage Clash Verge Rev subscriptions, proxy groups, and proxy modes",
-  "icon": "extension-icon.png",
+  "icon": "clash-verge.png",
   "author": "your-name",
   "license": "MIT",
   "commands": [
@@ -12,11 +12,19 @@
       "title": "Manage Proxies",
       "subtitle": "Proxy Groups",
       "description": "View and switch proxy nodes in different rule groups",
-      "mode": "view"
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "query",
+          "type": "text",
+          "placeholder": "Search",
+          "required": false
+        }
+      ]
     },
     {
       "name": "manage-profiles",
-      "title": "Manage Profiles",
+      "title": "Manage Subscriptions",
       "subtitle": "Subscriptions",
       "description": "View, switch, and update subscription profiles",
       "mode": "view"

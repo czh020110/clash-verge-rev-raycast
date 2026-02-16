@@ -30,7 +30,10 @@ declare namespace Preferences {
 
 declare namespace Arguments {
   /** Arguments passed to the `manage-proxies` command */
-  export type ManageProxies = {}
+  export type ManageProxies = {
+  /** Search */
+  "query": string
+}
   /** Arguments passed to the `manage-profiles` command */
   export type ManageProfiles = {}
   /** Arguments passed to the `switch-mode` command */
