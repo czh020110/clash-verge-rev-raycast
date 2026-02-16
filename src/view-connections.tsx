@@ -42,6 +42,8 @@ interface Speed {
   down: number;
 }
 
+type SortOption = "downSpeed" | "upSpeed" | "download" | "upload" | "time";
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -60,6 +62,7 @@ export default function ViewConnections() {
   const [isConnected, setIsConnected] = useState(false);
   const [showDetail, setShowDetail] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("downSpeed");
 
   // Store previous snapshot to calculate speed
   const prevConnectionsRef = useRef<Record<string, ConnectionItem>>({});
@@ -120,13 +123,8 @@ export default function ViewConnections() {
             prevConnectionsRef.current = newConnMap;
             lastSnapshotTimeRef.current = now;
 
-            // Sort by time (newest first)
-            setConnections(
-              newConnections.sort(
-                (a, b) =>
-                  new Date(b.start).getTime() - new Date(a.start).getTime(),
-              ),
-            );
+            // Update connections state (sorting happens in render or effect)
+            setConnections(newConnections);
           }
         } catch (err) {
           console.error("Parse error", err);
@@ -189,16 +187,42 @@ export default function ViewConnections() {
     }
   };
 
-  // Memoize total speeds
-  const totalSpeed = useMemo(() => {
-    let down = 0;
-    let up = 0;
+  // Calculate Max Speeds
+  const maxSpeed = useMemo(() => {
+    let maxDown = 0;
+    let maxUp = 0;
     Object.values(speeds).forEach((s) => {
-      down += s.down;
-      up += s.up;
+      if (s.down > maxDown) maxDown = s.down;
+      if (s.up > maxUp) maxUp = s.up;
     });
-    return { down, up };
+    return { down: maxDown, up: maxUp };
   }, [speeds]);
+
+  // Sort Connections
+  const sortedConnections = useMemo(() => {
+    return [...connections].sort((a, b) => {
+      switch (sortBy) {
+        case "downSpeed": {
+          const speedA = speeds[a.id]?.down || 0;
+          const speedB = speeds[b.id]?.down || 0;
+          return speedB - speedA;
+        }
+        case "upSpeed": {
+          const speedA = speeds[a.id]?.up || 0;
+          const speedB = speeds[b.id]?.up || 0;
+          return speedB - speedA;
+        }
+        case "download":
+          return b.download - a.download;
+        case "upload":
+          return b.upload - a.upload;
+        case "time":
+          return new Date(b.start).getTime() - new Date(a.start).getTime();
+        default:
+          return 0;
+      }
+    });
+  }, [connections, speeds, sortBy]);
 
   return (
     <List
@@ -207,8 +231,33 @@ export default function ViewConnections() {
       searchBarPlaceholder="Filter connections..."
       navigationTitle={
         isConnected
-          ? `↓ ${formatSpeed(totalSpeed.down)}  ↑ ${formatSpeed(totalSpeed.up)}`
+          ? `↓ ${formatSpeed(maxSpeed.down)}  ↑ ${formatSpeed(maxSpeed.up)}`
           : "View Connections"
+      }
+      searchBarAccessory={
+        <List.Dropdown
+          tooltip="Sort by"
+          onChange={(newValue) => setSortBy(newValue as SortOption)}
+          value={sortBy}
+        >
+          <List.Dropdown.Item
+            title="Download Speed"
+            value="downSpeed"
+            icon={Icon.Download}
+          />
+          <List.Dropdown.Item
+            title="Upload Speed"
+            value="upSpeed"
+            icon={Icon.Upload}
+          />
+          <List.Dropdown.Item title="Total Download" value="download" />
+          <List.Dropdown.Item title="Total Upload" value="upload" />
+          <List.Dropdown.Item
+            title="Start Time"
+            value="time"
+            icon={Icon.Clock}
+          />
+        </List.Dropdown>
       }
     >
       {errorMsg ? (
@@ -226,7 +275,7 @@ export default function ViewConnections() {
             </ActionPanel>
           }
         />
-      ) : connections.length === 0 ? (
+      ) : sortedConnections.length === 0 ? (
         <List.EmptyView
           title={isConnected ? "No Active Connections" : "Connecting..."}
           icon={isConnected ? Icon.CheckCircle : Icon.Wifi}
@@ -234,9 +283,9 @@ export default function ViewConnections() {
       ) : (
         <List.Section
           title="Active Connections"
-          subtitle={`${connections.length} connections`}
+          subtitle={`${sortedConnections.length} connections`}
         >
-          {connections.map((conn) => {
+          {sortedConnections.map((conn) => {
             const speed = speeds[conn.id] || { down: 0, up: 0 };
             const host = conn.metadata.host || conn.metadata.destinationIP;
             const chains = conn.chains.slice().reverse().join(" :: "); // Show path
@@ -343,10 +392,10 @@ export default function ViewConnections() {
                       onAction={() => setShowDetail(!showDetail)}
                     />
                     <Action
-                      title="Close Connection (Cmd+X)"
+                      title="Close Connection (Ctrl+X)"
                       icon={Icon.XMarkCircle}
                       style={Action.Style.Destructive}
-                      shortcut={{ modifiers: ["cmd"], key: "x" }}
+                      shortcut={{ modifiers: ["ctrl"], key: "x" }}
                       onAction={() => handleCloseConnection(conn.id)}
                     />
                     <Action
