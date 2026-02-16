@@ -28,6 +28,8 @@ declare namespace Preferences {
   export type SwitchMode = ExtensionPreferences & {}
   /** Preferences accessible in the `view-logs` command */
   export type ViewLogs = ExtensionPreferences & {}
+  /** Preferences accessible in the `view-connections` command */
+  export type ViewConnections = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -42,5 +44,7 @@ declare namespace Arguments {
   export type SwitchMode = {}
   /** Arguments passed to the `view-logs` command */
   export type ViewLogs = {}
+  /** Arguments passed to the `view-connections` command */
+  export type ViewConnections = {}
 }
 

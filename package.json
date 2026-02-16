@@ -42,6 +42,13 @@
       "subtitle": "Real-time Logs",
       "description": "View Clash Verge Rev logs in real-time",
       "mode": "view"
+    },
+    {
+      "name": "view-connections",
+      "title": "View Connections",
+      "subtitle": "Active Connections",
+      "description": "View and manage active Clash connections",
+      "mode": "view"
     }
   ],
   "preferences": [

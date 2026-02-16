@@ -202,3 +202,35 @@ export function formatDelay(delay: number): string {
   if (delay < 0) return "timeout";
   return `${delay}ms`;
 }
+
+/** Get config for streaming connections from Mihomo */
+export function getConnectionStreamConfig(): {
+  url: string;
+  headers: Record<string, string>;
+} {
+  const prefs = getPreferenceValues<Preferences>();
+  let url = `${getApiBase().replace("http", "ws")}/connections`;
+  if (prefs.secret) {
+    url += `?token=${encodeURIComponent(prefs.secret)}`;
+  }
+  return {
+    url,
+    headers: getHeaders(),
+  };
+}
+
+/** Close a specific connection */
+export async function closeConnection(id: string): Promise<void> {
+  await fetch(`${getApiBase()}/connections/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+}
+
+/** Close all connections */
+export async function closeAllConnections(): Promise<void> {
+  await fetch(`${getApiBase()}/connections`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+}
