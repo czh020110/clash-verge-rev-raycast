@@ -38,8 +38,8 @@ function delayColor(delay: number): Color {
 
 function delayIcon(delay: number): Icon {
   if (delay <= 0) return Icon.Circle;
-  if (delay < 200) return Icon.CircleFilled;
-  if (delay < 500) return Icon.CircleProgress75;
+  if (delay < 200) return Icon.CircleProgress75;
+  if (delay < 500) return Icon.CircleProgress50;
   return Icon.CircleProgress25;
 }
 
@@ -359,8 +359,8 @@ export default function ManageProxies(
                 title={proxy.name}
                 subtitle={proxyTypeTag(proxy.type)}
                 icon={{
-                  source: isActive ? Icon.CheckCircle : delayIcon(delay),
-                  tintColor: isActive ? Color.Green : delayColor(delay),
+                  source: isActive ? Icon.Checkmark : delayIcon(delay),
+                  tintColor: delayColor(delay),
                 }}
                 accessories={[
                   ...(delay > 0
@@ -400,8 +400,8 @@ export default function ManageProxies(
                 title={proxy.name}
                 subtitle={proxyTypeTag(proxy.type)}
                 icon={{
-                  source: isActive ? Icon.CheckCircle : delayIcon(delay),
-                  tintColor: isActive ? Color.Green : delayColor(delay),
+                  source: isActive ? Icon.Checkmark : delayIcon(delay),
+                  tintColor: delayColor(delay),
                 }}
                 accessories={[
                   ...(delay > 0
@@ -445,8 +445,8 @@ export default function ManageProxies(
                   title={proxy.name}
                   subtitle={proxyTypeTag(proxy.type)}
                   icon={{
-                    source: isActive ? Icon.CheckCircle : delayIcon(delay),
-                    tintColor: isActive ? Color.Green : delayColor(delay),
+                    source: isActive ? Icon.Checkmark : delayIcon(delay),
+                    tintColor: delayColor(delay),
                   }}
                   accessories={[
                     ...(delay > 0
