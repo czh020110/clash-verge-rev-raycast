@@ -19,9 +19,11 @@ import {
   formatTime,
   formatExpire,
   switchProfileFast,
+  updateProfileContent,
   ProfileItem,
   ProfilesConfig,
 } from "./utils/profiles";
+import ProfileForm from "./profile-form";
 import { reloadConfigs } from "./utils/api";
 
 // --- Type icons ---
@@ -113,6 +115,28 @@ export default function ManageProfiles() {
     }
   };
 
+  const handleUpdate = async (profile: ProfileItem) => {
+    try {
+      await showToast({
+        style: Toast.Style.Animated,
+        title: "Updating subscription...",
+      });
+      await updateProfileContent(profile.uid);
+      await showToast({
+        style: Toast.Style.Success,
+        title: "Subscription updated",
+        message: `${profile.name} updated successfully`,
+      });
+      fetchProfiles();
+    } catch (error) {
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to update subscription",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
   const handleCopyUrl = async (url: string) => {
     await Clipboard.copy(url);
     showToast({
@@ -173,11 +197,30 @@ export default function ManageProfiles() {
                         onAction={() => handleActivate(profile)}
                       />
                     )}
+                    {profile.type === "remote" && (
+                      <Action
+                        title="Update Subscription"
+                        icon={Icon.Cloud}
+                        shortcut={{ modifiers: ["cmd"], key: "u" }}
+                        onAction={() => handleUpdate(profile)}
+                      />
+                    )}
+                    <Action.Push
+                      title="Edit Profile"
+                      icon={Icon.Pencil}
+                      shortcut={{ modifiers: ["cmd"], key: "e" }}
+                      target={
+                        <ProfileForm
+                          profile={profile}
+                          onRefresh={fetchProfiles}
+                        />
+                      }
+                    />
                     {profile.url && (
                       <Action
                         title="Copy Subscription URL"
                         icon={Icon.Clipboard}
-                        shortcut={{ modifiers: ["cmd"], key: "c" }}
+                        shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
                         onAction={() => handleCopyUrl(profile.url!)}
                       />
                     )}
@@ -215,6 +258,17 @@ export default function ManageProfiles() {
                 accessories={[{ text: profileTypeLabel(profile.type) }]}
                 actions={
                   <ActionPanel>
+                    <Action.Push
+                      title="Edit Profile"
+                      icon={Icon.Pencil}
+                      shortcut={{ modifiers: ["cmd"], key: "e" }}
+                      target={
+                        <ProfileForm
+                          profile={profile}
+                          onRefresh={fetchProfiles}
+                        />
+                      }
+                    />
                     <Action
                       title="Refresh List"
                       icon={Icon.ArrowClockwise}

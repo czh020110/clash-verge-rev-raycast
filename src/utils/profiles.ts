@@ -3,6 +3,7 @@ import * as path from "path";
 import * as os from "os";
 import * as yaml from "js-yaml";
 import { exec } from "child_process";
+import fetch from "node-fetch";
 
 // --- Types ---
 
@@ -312,4 +313,119 @@ export async function restartClashVerge(): Promise<void> {
   // Wait for app to initialize and process configs
   await new Promise((resolve) => setTimeout(resolve, 5000));
   console.log("[Restart] Restart complete");
+}
+
+/**
+ * Update profile content from remote URL
+ */
+export async function updateProfileContent(uid: string): Promise<void> {
+  const filePath = getProfilesYamlPath();
+  const profiles = readProfiles();
+  const profileIndex = profiles.items?.findIndex((item) => item.uid === uid);
+
+  if (profileIndex === undefined || profileIndex === -1 || !profiles.items) {
+    throw new Error(`Profile with UID "${uid}" not found`);
+  }
+
+  const profile = profiles.items[profileIndex];
+
+  if (profile.type !== "remote" || !profile.url) {
+    throw new Error("Profile is not a remote subscription or has no URL");
+  }
+
+  console.log(
+    `[Profile] Updating content for ${profile.name} (${profile.url})`,
+  );
+
+  // Fetch remote content
+  const response = await fetch(profile.url, {
+    headers: {
+      "User-Agent":
+        profile.option?.user_agent || "ClashVerge/1.0.0 (Raycast Extension)",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch profile: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const content = await response.text();
+
+  // Validate YAML/content (basic check)
+  if (!content || content.trim().length === 0) {
+    throw new Error("Fetched profile content is empty");
+  }
+
+  // Ensure profiles directory exists
+  const profileDir = path.join(getConfigDir(), "profiles");
+  if (!fs.existsSync(profileDir)) {
+    fs.mkdirSync(profileDir, { recursive: true });
+  }
+
+  // Determine filename if not exists
+  let filename = profile.file;
+  if (!filename) {
+    // Basic sanitization
+    const safeName = (profile.name || "profile")
+      .replace(/[^a-z0-9]/gi, "_")
+      .toLowerCase();
+    filename = `${safeName}_${Date.now()}.yaml`;
+    profile.file = filename;
+  }
+
+  const profilePath = path.join(profileDir, filename);
+
+  // Write content
+  fs.writeFileSync(profilePath, content, "utf-8");
+  console.log(`[Profile] Saved content to ${profilePath}`);
+
+  // Update headers info if available (Subscription-Userinfo)
+  const userInfo = response.headers.get("subscription-userinfo");
+  if (userInfo) {
+    const extra: ProfileItem["extra"] = profile.extra || {};
+    const parts = userInfo.split(";");
+    for (const part of parts) {
+      const [key, value] = part.trim().split("=");
+      if (key === "upload") extra.upload = parseInt(value, 10);
+      if (key === "download") extra.download = parseInt(value, 10);
+      if (key === "total") extra.total = parseInt(value, 10);
+      if (key === "expire") extra.expire = parseInt(value, 10);
+    }
+    profile.extra = extra;
+  }
+
+  // Update timestamp
+  profile.updated = Math.floor(Date.now() / 1000);
+
+  // Save profiles.yaml
+  profiles.items[profileIndex] = profile;
+  const yamlStr = yaml.dump(profiles, { lineWidth: -1 });
+  fs.writeFileSync(filePath, yamlStr, "utf-8");
+}
+
+/**
+ * Update profile metadata (name, desc, url, etc.)
+ */
+export function updateProfileMetadata(
+  uid: string,
+  data: Partial<ProfileItem>,
+): void {
+  const filePath = getProfilesYamlPath();
+  const profiles = readProfiles();
+  const profileIndex = profiles.items?.findIndex((item) => item.uid === uid);
+
+  if (profileIndex === undefined || profileIndex === -1 || !profiles.items) {
+    throw new Error(`Profile with UID "${uid}" not found`);
+  }
+
+  // Merge updates
+  profiles.items[profileIndex] = {
+    ...profiles.items[profileIndex],
+    ...data,
+  };
+
+  const yamlStr = yaml.dump(profiles, { lineWidth: -1 });
+  fs.writeFileSync(filePath, yamlStr, "utf-8");
 }
