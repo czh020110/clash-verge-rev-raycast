@@ -10,6 +10,7 @@ import {
   Clipboard,
   confirmAlert,
   Alert,
+  LaunchProps,
 } from "@raycast/api";
 import {
   readProfiles,
@@ -20,6 +21,7 @@ import {
   formatExpire,
   switchProfileFast,
   updateProfileContent,
+  findUidByShortcut,
   ProfileItem,
   ProfilesConfig,
 } from "./utils/profiles";
@@ -55,7 +57,13 @@ function profileTypeLabel(type: string): string {
 
 // --- Main Command ---
 
-export default function ManageProfiles() {
+interface Arguments {
+  shortcut?: string;
+}
+
+export default function ManageProfiles(
+  props: LaunchProps<{ arguments: Arguments }>,
+) {
   const [profiles, setProfiles] = useState<ProfilesConfig>({ items: [] });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -64,19 +72,36 @@ export default function ManageProfiles() {
       setIsLoading(true);
       const data = readProfiles();
       setProfiles(data);
+      return data;
     } catch (error) {
       showToast({
         style: Toast.Style.Failure,
         title: "Failed to read profiles",
         message: error instanceof Error ? error.message : String(error),
       });
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchProfiles();
+    const data = fetchProfiles();
+    if (data && props.arguments.shortcut) {
+      const shortcut = props.arguments.shortcut.trim();
+      const targetUid = findUidByShortcut(shortcut);
+      const targetProfile = data.items?.find((p) => p.uid === targetUid);
+
+      if (targetProfile) {
+        handleActivate(targetProfile);
+      } else {
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Profile not found",
+          message: `No profile found with shortcut "${shortcut}"`,
+        });
+      }
+    }
   }, [fetchProfiles]);
 
   const handleActivate = async (profile: ProfileItem) => {
@@ -110,28 +135,6 @@ export default function ManageProfiles() {
       showToast({
         style: Toast.Style.Failure,
         title: "Failed to activate profile",
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  };
-
-  const handleUpdate = async (profile: ProfileItem) => {
-    try {
-      await showToast({
-        style: Toast.Style.Animated,
-        title: "Updating subscription...",
-      });
-      await updateProfileContent(profile.uid);
-      await showToast({
-        style: Toast.Style.Success,
-        title: "Subscription updated",
-        message: `${profile.name} updated successfully`,
-      });
-      fetchProfiles();
-    } catch (error) {
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to update subscription",
         message: error instanceof Error ? error.message : String(error),
       });
     }
@@ -195,14 +198,6 @@ export default function ManageProfiles() {
                         title="Activate Profile"
                         icon={Icon.CheckCircle}
                         onAction={() => handleActivate(profile)}
-                      />
-                    )}
-                    {profile.type === "remote" && (
-                      <Action
-                        title="Update Subscription"
-                        icon={Icon.Cloud}
-                        shortcut={{ modifiers: ["cmd"], key: "u" }}
-                        onAction={() => handleUpdate(profile)}
                       />
                     )}
                     <Action.Push

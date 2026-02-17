@@ -8,7 +8,13 @@ import {
   useNavigation,
 } from "@raycast/api";
 import { useState } from "react";
-import { ProfileItem, updateProfileMetadata } from "./utils/profiles";
+import {
+  ProfileItem,
+  updateProfileMetadata,
+  getShortcut,
+  saveShortcut,
+  isShortcutDuplicate,
+} from "./utils/profiles";
 
 interface ProfileFormProps {
   profile: ProfileItem;
@@ -18,6 +24,7 @@ interface ProfileFormProps {
 interface FormValues {
   name: string;
   desc: string;
+  shortcut: string;
   url: string;
   interval: string;
 }
@@ -25,11 +32,28 @@ interface FormValues {
 export default function ProfileForm({ profile, onRefresh }: ProfileFormProps) {
   const { pop } = useNavigation();
   const [nameError, setNameError] = useState<string | undefined>();
+  const [currentShortcut, setCurrentShortcut] = useState<string>(
+    getShortcut(profile.uid) || "",
+  );
 
   async function handleSubmit(values: FormValues) {
     if (!values.name) {
       setNameError("Name is required");
       return;
+    }
+
+    const shortcut = values.shortcut?.trim();
+
+    if (shortcut) {
+      const duplicateUid = isShortcutDuplicate(shortcut, profile.uid);
+      if (duplicateUid) {
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Duplicate Shortcut",
+          message: `Shortcut "${shortcut}" is already used by another profile`,
+        });
+        return;
+      }
     }
 
     try {
@@ -40,6 +64,7 @@ export default function ProfileForm({ profile, onRefresh }: ProfileFormProps) {
 
       const interval = parseInt(values.interval, 10) || 0;
 
+      // Update metadata (slow operation)
       updateProfileMetadata(profile.uid, {
         name: values.name,
         desc: values.desc,
@@ -49,6 +74,9 @@ export default function ProfileForm({ profile, onRefresh }: ProfileFormProps) {
           update_interval: interval,
         },
       });
+
+      // Update shortcut (fast operation)
+      saveShortcut(profile.uid, shortcut);
 
       showToast({
         style: Toast.Style.Success,
@@ -87,6 +115,13 @@ export default function ProfileForm({ profile, onRefresh }: ProfileFormProps) {
         title="Description"
         placeholder="Optional description"
         defaultValue={profile.desc}
+      />
+      <Form.TextField
+        id="shortcut"
+        title="Shortcut"
+        placeholder="Unique shortcut (e.g., 'ssr')"
+        defaultValue={currentShortcut}
+        info="Unique shortcut to quickly switch to this profile via command argument."
       />
       {profile.type === "remote" && (
         <>

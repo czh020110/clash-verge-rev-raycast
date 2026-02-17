@@ -27,7 +27,15 @@
       "title": "Manage Subscriptions",
       "subtitle": "Subscriptions",
       "description": "View, switch, and update subscription profiles",
-      "mode": "view"
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "shortcut",
+          "type": "text",
+          "placeholder": "Profile Shortcut",
+          "required": false
+        }
+      ]
     },
     {
       "name": "switch-mode",

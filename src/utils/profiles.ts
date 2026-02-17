@@ -150,6 +150,61 @@ export function getConfigDir(): string {
   return getClashVergeDir();
 }
 
+// --- Shortcuts Storage (separate from profiles.yaml) ---
+
+function getShortcutsPath(): string {
+  return path.join(getClashVergeDir(), "raycast-shortcuts.json");
+}
+
+/** Read all shortcuts: { uid: shortcutString } */
+export function readShortcuts(): Record<string, string> {
+  const filePath = getShortcutsPath();
+  if (!fs.existsSync(filePath)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+/** Save a shortcut for a profile UID */
+export function saveShortcut(uid: string, shortcut: string): void {
+  const shortcuts = readShortcuts();
+  if (shortcut) {
+    shortcuts[uid] = shortcut;
+  } else {
+    delete shortcuts[uid];
+  }
+  fs.writeFileSync(
+    getShortcutsPath(),
+    JSON.stringify(shortcuts, null, 2),
+    "utf-8",
+  );
+}
+
+/** Get shortcut for a profile UID */
+export function getShortcut(uid: string): string | undefined {
+  return readShortcuts()[uid];
+}
+
+/** Find profile UID by shortcut string */
+export function findUidByShortcut(shortcut: string): string | undefined {
+  const shortcuts = readShortcuts();
+  return Object.entries(shortcuts).find(([, v]) => v === shortcut)?.[0];
+}
+
+/** Check if a shortcut is already used by another profile */
+export function isShortcutDuplicate(
+  shortcut: string,
+  excludeUid: string,
+): string | undefined {
+  const shortcuts = readShortcuts();
+  const entry = Object.entries(shortcuts).find(
+    ([uid, v]) => v === shortcut && uid !== excludeUid,
+  );
+  return entry ? entry[0] : undefined;
+}
+
 /** Keys that come from the raw profile (subscription-specific content) */
 const PROFILE_CONTENT_KEYS = [
   "proxies",

@@ -41,7 +41,10 @@ declare namespace Arguments {
   "query": string
 }
   /** Arguments passed to the `manage-profiles` command */
-  export type ManageProfiles = {}
+  export type ManageProfiles = {
+  /** Profile Shortcut */
+  "shortcut": string
+}
   /** Arguments passed to the `switch-mode` command */
   export type SwitchMode = {}
   /** Arguments passed to the `view-logs` command */
