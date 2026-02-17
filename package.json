@@ -3,7 +3,7 @@
   "name": "clash-verge-rev",
   "title": "Clash Verge Rev",
   "description": "Manage Clash Verge Rev subscriptions, proxy groups, and proxy modes",
-  "icon": "clash.png",
+  "icon": "verge.png",
   "author": "your-name",
   "license": "MIT",
   "commands": [
