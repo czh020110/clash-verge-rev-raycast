@@ -10,7 +10,7 @@
     {
       "name": "manage-proxies",
       "title": "Manage Proxies",
-      "subtitle": "Proxy Groups",
+      "subtitle": "Clash Proxy Groups",
       "description": "View and switch proxy nodes in different rule groups",
       "mode": "view",
       "arguments": [
@@ -25,7 +25,7 @@
     {
       "name": "manage-profiles",
       "title": "Manage Subscriptions",
-      "subtitle": "Subscriptions",
+      "subtitle": "Clash Subscriptions",
       "description": "View, switch, and update subscription profiles",
       "mode": "view",
       "arguments": [
@@ -40,21 +40,21 @@
     {
       "name": "switch-mode",
       "title": "Switch Mode",
-      "subtitle": "Rule / Global / Direct",
+      "subtitle": "Clash Rule / Global / Direct",
       "description": "Quickly switch between proxy modes",
       "mode": "view"
     },
     {
       "name": "view-logs",
       "title": "View Logs",
-      "subtitle": "Real-time Logs",
+      "subtitle": "Clash Real-time Logs",
       "description": "View Clash Verge Rev logs in real-time",
       "mode": "view"
     },
     {
       "name": "view-connections",
       "title": "View Connections",
-      "subtitle": "Active Connections",
+      "subtitle": "Clash Active Connections",
       "description": "View and manage active Clash connections",
       "mode": "view"
     }
