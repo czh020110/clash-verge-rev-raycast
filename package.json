@@ -4,8 +4,10 @@
   "title": "Clash Verge Rev",
   "description": "Manage Clash Verge Rev subscriptions, proxy groups, and proxy modes",
   "icon": "verge.png",
-  "author": "your-name",
+  "author": "czhyygmx",
   "license": "MIT",
+  "platforms": ["Windows"],
+  "categories": ["Developer Tools"],
   "commands": [
     {
       "name": "manage-proxies",
@@ -145,6 +147,7 @@
     "dev": "ray develop",
     "build": "ray build",
     "lint": "ray lint",
-    "fix-lint": "ray lint --fix"
+    "fix-lint": "ray lint --fix",
+    "publish": "npx @raycast/api@latest publish"
   }
 }
