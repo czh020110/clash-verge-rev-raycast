@@ -15,7 +15,9 @@ import {
   getConnectionStreamConfig,
   closeConnection,
   closeAllConnections,
+  getProxies,
 } from "./utils/api";
+import fetch from "node-fetch";
 
 interface Preferences {
   secret?: string;
@@ -101,8 +103,123 @@ export default function ViewConnections() {
     }
 
     try {
-      const { url } = getConnectionStreamConfig();
-      console.log("[Connections] Connecting to:", url);
+      const streamConfig = getConnectionStreamConfig();
+      console.log("[Connections] Stream config:", {
+        url: streamConfig.url,
+        usePolling: streamConfig.usePolling,
+      });
+
+      // macOS with Unix socket: use HTTP polling instead of WebSocket
+      if (streamConfig.usePolling) {
+        setIsConnected(true);
+        setErrorMsg(null);
+        prevGlobalRef.current = null;
+        lastSnapshotTimeRef.current = Date.now();
+
+        const pollInterval = streamConfig.pollInterval || 1000;
+        const pollUrl = streamConfig.url;
+        const pollHeaders = streamConfig.headers;
+        const pollAgent = streamConfig.agent;
+
+        const poll = async () => {
+          try {
+            const fetchOpts: Record<string, unknown> = {
+              method: "GET",
+              headers: pollHeaders,
+            };
+            if (pollAgent) {
+              fetchOpts.agent = pollAgent;
+            }
+            const res = await fetch(pollUrl, fetchOpts);
+            if (!res.ok) return;
+
+            const data = await res.json();
+            if (data.connections) {
+              const newConnections = data.connections as ConnectionItem[];
+              const now = Date.now();
+              const timeDiff = (now - lastSnapshotTimeRef.current) / 1000;
+
+              // Calculate per-connection speed
+              if (timeDiff > 0) {
+                const newSpeeds: Record<string, Speed> = {};
+                newConnections.forEach((conn) => {
+                  const prev = prevConnectionsRef.current[conn.id];
+                  if (prev) {
+                    const downSpeed = (conn.download - prev.download) / timeDiff;
+                    const upSpeed = (conn.upload - prev.upload) / timeDiff;
+                    newSpeeds[conn.id] = {
+                      down: Math.max(0, downSpeed),
+                      up: Math.max(0, upSpeed),
+                    };
+                  } else {
+                    newSpeeds[conn.id] = { down: 0, up: 0 };
+                  }
+                });
+                setSpeeds(newSpeeds);
+              }
+
+              // Calculate global speed
+              const currentTotalDown = data.downloadTotal || 0;
+              const currentTotalUp = data.uploadTotal || 0;
+              let globalDownSpeed = 0;
+              let globalUpSpeed = 0;
+
+              if (prevGlobalRef.current && timeDiff > 0) {
+                globalDownSpeed = Math.max(
+                  0,
+                  (currentTotalDown - prevGlobalRef.current.down) / timeDiff,
+                );
+                globalUpSpeed = Math.max(
+                  0,
+                  (currentTotalUp - prevGlobalRef.current.up) / timeDiff,
+                );
+              }
+
+              setTraffic({
+                downSpeed: globalDownSpeed,
+                upSpeed: globalUpSpeed,
+                totalDown: currentTotalDown,
+                totalUp: currentTotalUp,
+              });
+
+              // Update refs
+              const newConnMap: Record<string, ConnectionItem> = {};
+              newConnections.forEach((c) => (newConnMap[c.id] = c));
+              prevConnectionsRef.current = newConnMap;
+              prevGlobalRef.current = {
+                down: currentTotalDown,
+                up: currentTotalUp,
+              };
+              lastSnapshotTimeRef.current = now;
+
+              setConnections(newConnections);
+            }
+          } catch {
+            // Poll errors are non-fatal; next poll will retry
+          }
+        };
+
+        // Start polling loop
+        const pollLoop = () => {
+          poll().then(() => {
+            if (wsRef.current) {
+              // Reuse wsRef to track the polling timer
+              // @ts-expect-error - storing timer reference for cleanup
+              wsRef.current = { close: () => clearTimeout(timer) } as WebSocket;
+            }
+            const timer = setTimeout(pollLoop, pollInterval);
+            // Update ref with new timer for cleanup
+            // @ts-expect-error - storing timer reference for cleanup
+            wsRef.current = { close: () => clearTimeout(timer) } as WebSocket;
+          });
+        };
+        pollLoop();
+        return;
+      }
+
+      // Windows or macOS with TCP: use WebSocket
+      const { url } = streamConfig;
+      console.log("[Connections] Connecting to WebSocket:", url);
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
@@ -480,37 +597,37 @@ export default function ViewConnections() {
                       title="Close Connection (Ctrl+X)"
                       icon={Icon.XMarkCircle}
                       style={Action.Style.Destructive}
-                      shortcut={{ modifiers: ["ctrl"], key: "x" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "x" }, Windows: { modifiers: ["ctrl"], key: "x" } }}
                       onAction={() => handleCloseConnection(conn.id)}
                     />
                     <Action
                       title="Close All Connections"
                       icon={Icon.Trash}
                       style={Action.Style.Destructive}
-                      shortcut={{ modifiers: ["ctrl", "shift"], key: "x" }}
+                      shortcut={{ macOS: { modifiers: ["cmd", "shift"], key: "x" }, Windows: { modifiers: ["ctrl", "shift"], key: "x" } }}
                       onAction={handleCloseAll}
                     />
                     <Action.CopyToClipboard
                       title="Copy Host"
                       content={host}
-                      shortcut={{ modifiers: ["ctrl"], key: "c" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "c" }, Windows: { modifiers: ["ctrl"], key: "c" } }}
                     />
                     <Action.CopyToClipboard
                       title="Copy Chain"
                       content={chains}
-                      shortcut={{ modifiers: ["ctrl", "shift"], key: "c" }}
+                      shortcut={{ macOS: { modifiers: ["cmd", "shift"], key: "c" }, Windows: { modifiers: ["ctrl", "shift"], key: "c" } }}
                     />
                     {/* Shortcuts for sorting */}
                     <Action
                       title="Sort Previous"
                       icon={Icon.ArrowLeft}
-                      shortcut={{ modifiers: ["ctrl"], key: "arrowLeft" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "arrowLeft" }, Windows: { modifiers: ["ctrl"], key: "arrowLeft" } }}
                       onAction={() => cycleSort(-1)}
                     />
                     <Action
                       title="Sort Next"
                       icon={Icon.ArrowRight}
-                      shortcut={{ modifiers: ["ctrl"], key: "arrowRight" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "arrowRight" }, Windows: { modifiers: ["ctrl"], key: "arrowRight" } }}
                       onAction={() => cycleSort(1)}
                     />
                   </ActionPanel>

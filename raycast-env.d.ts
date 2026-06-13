@@ -8,10 +8,12 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
-  /** Controller Port - Mihomo external controller port (default: 9090) */
+  /** Controller Port - Mihomo external controller TCP port. On macOS, Unix socket is auto-detected first (see Controller Socket below). */
   "controllerPort": string,
   /** API Secret - Mihomo external controller secret (found in Clash Verge Rev settings) */
   "secret"?: string,
+  /** Controller Socket - macOS only: Mihomo Unix socket path. Auto-detected by default. Leave empty to use TCP port instead. */
+  "controllerSocket": string,
   /** Default Search Mode - Default search target in Manage Proxies. Use ':' prefix to search the other type. */
   "defaultSearchMode": "groups" | "nodes",
   /** Default Sort Order - Default sorting method for View Connections. */

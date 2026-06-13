@@ -4,27 +4,33 @@
 
 A Raycast extension for managing Clash Verge Rev and Mihomo from Raycast. It lets you switch subscription profiles, manage proxy groups and nodes, change proxy modes, inspect live connections, and view real-time logs without opening the Clash Verge Rev desktop app.
 
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:19:24_clash-raycast-home.png)
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_222924_clash-raycast-1.png)
 
 ## Features
 
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:20:54_clash-raycast-proxy.png)
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_223714_clash-raycast-4.png)
 
 - Manage subscription profiles from Raycast.
 - Quickly switch profiles by selecting a profile or passing a custom shortcut argument.
 - Edit profile metadata, subscription URL, update interval, and Raycast-only shortcuts.
+
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_223231_clash-raycast-2.png)
+
 - Manage proxy groups and switch nodes.
 - Search proxy groups or nodes with flexible search modes.
 - Test node delay individually or test all nodes in a proxy group.
 
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:22:34_clash-raycast-mode.png)
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_223424_clash-raycast-3.png)
 
 - Switch Mihomo mode between Rule, Global, and Direct.
+
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_223828_clash-raycast-5.png)
+
 - View live connection traffic, speed, rule, chain, process, source, and destination details.
 - Sort active connections by speed, traffic, start time, or host.
 - Close one connection or all active connections.
 
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:24:00_clash-raycast-logs.png)
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_224159_clash-image-5.png)
 
 - View real-time Clash/Mihomo logs and copy visible logs.
 
@@ -72,12 +78,12 @@ npm run fix-lint
 
 Open the extension preferences in Raycast and configure:
 
-| Preference | Description | Default |
-| --- | --- | --- |
-| Controller Port | Mihomo external controller port. | `9090` |
-| API Secret | Mihomo external controller secret. Leave empty if no secret is configured. | Empty |
-| Default Search Mode | Default search target in Manage Proxies. | Groups |
-| Default Sort Order | Default sorting method in View Connections. | Download Speed |
+| Preference          | Description                                                                | Default        |
+| ------------------- | -------------------------------------------------------------------------- | -------------- |
+| Controller Port     | Mihomo external controller port.                                           | `9090`         |
+| API Secret          | Mihomo external controller secret. Leave empty if no secret is configured. | Empty          |
+| Default Search Mode | Default search target in Manage Proxies.                                   | Groups         |
+| Default Sort Order  | Default sorting method in View Connections.                                | Download Speed |
 
 ## Commands
 
@@ -120,8 +126,6 @@ Switch Mihomo's proxy mode:
 - Direct Mode: bypasses proxy routing.
 
 The command also shows selected current config values such as mixed port, LAN access, and log level.
-
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:24:00_clash-raycast-subscription.png)
 
 ### View Connections
 

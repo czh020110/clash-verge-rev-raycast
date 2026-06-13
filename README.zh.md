@@ -2,23 +2,36 @@
 
 [English](README.md)
 
-这是一个用于在 Raycast 中管理 Clash Verge Rev 和 Mihomo 的扩展。你可以不打开 Clash Verge Rev 桌面端，直接在 Raycast 中切换订阅、管理代理组和节点、切换代理模式、查看实时连接和实时日志。
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:19:24_clash-raycast-home.png)
+这是一个用于在 Raycast 中管理 Clash Verge Rev 和 Mihomo 的扩展。你可以不打开 Clash Verge Rev 桌面端，直接在 Raycast 中切换订阅配置、管理代理组和节点、切换代理模式、查看实时连接和实时日志。
+
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_222924_clash-raycast-1.png)
+
 ## 功能特性
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:20:54_clash-raycast-proxy.png)
+
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_223714_clash-raycast-4.png)
+
 - 在 Raycast 中管理订阅配置。
-- 通过选择订阅或命令参数快捷指令快速切换订阅。
+- 通过选择订阅或传入快捷指令参数快速切换订阅。
 - 编辑订阅名称、描述、订阅链接、更新间隔和 Raycast 专用快捷指令。
+
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_223231_clash-raycast-2.png)
+
 - 管理代理组并切换节点。
-- 支持按代理组或节点搜索，并可用前缀快速切换搜索类型。
+- 支持按代理组或节点灵活搜索。
 - 支持单个节点测速，也支持对整个代理组批量测速。
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:22:34_clash-raycast-mode.png)
+
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_223424_clash-raycast-3.png)
+
 - 在 Rule、Global、Direct 三种 Mihomo 模式之间切换。
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:24:00_clash-raycast-subscription.png)
-- 查看实时连接流量、速度、规则、链路、进程、源地址和目标地址等信息。
+
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_223828_clash-raycast-5.png)
+
+- 查看实时连接的流量、速度、规则、链路、进程、源地址和目标地址等信息。
 - 按速度、流量、开始时间或主机名排序活动连接。
 - 关闭单个连接或全部活动连接。
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:25:09_clash-raycast-logs.png)
+
+![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-06-12_224159_clash-image-5.png)
+
 - 查看 Clash/Mihomo 实时日志，并复制可见日志。
 
 ## 使用前提
@@ -151,8 +164,8 @@ npm run fix-lint
 该扩展通过两种方式和 Clash Verge Rev / Mihomo 集成：
 
 1. Mihomo external controller API
-   - 使用 REST API 获取代理、配置、测速以及关闭连接。
-   - 使用 WebSocket 获取实时连接列表。
+   - 使用 REST 端点获取代理、配置、测速以及关闭连接。
+   - 使用 WebSocket 获取实时连接。
    - 使用流式 HTTP 获取实时日志。
 
 2. Clash Verge Rev 本地配置文件
@@ -176,7 +189,7 @@ npm run fix-lint
 ### 出现 Unauthorized 或 API 错误
 
 如果 Clash Verge Rev 配置了 external controller secret，请在扩展的 **API Secret** 偏好设置中填写相同的值。
-![](https://fastly.jsdelivr.net/gh/czh020110/image@main/images/2026-05-15-10:17:23_clash外部设置.png)
+
 ### 找不到 profiles 配置
 
 请确认 Clash Verge Rev 至少启动过一次，并且已经生成配置文件。扩展会从 Clash Verge Rev 的应用数据目录读取订阅配置。

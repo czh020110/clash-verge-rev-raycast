@@ -6,7 +6,7 @@
   "icon": "verge.png",
   "author": "zh_chen",
   "license": "MIT",
-  "platforms": ["Windows"],
+  "platforms": ["macOS", "Windows"],
   "categories": ["Developer Tools"],
   "commands": [
     {
@@ -66,10 +66,10 @@
       "name": "controllerPort",
       "type": "textfield",
       "required": false,
-      "default": "9090",
+      "default": "9097",
       "title": "Controller Port",
-      "description": "Mihomo external controller port (default: 9090)",
-      "placeholder": "9090"
+      "description": "Mihomo external controller TCP port. On macOS, Unix socket is auto-detected first (see Controller Socket below).",
+      "placeholder": "9097"
     },
     {
       "name": "secret",
@@ -78,6 +78,15 @@
       "title": "API Secret",
       "description": "Mihomo external controller secret (found in Clash Verge Rev settings)",
       "placeholder": "Enter your API secret"
+    },
+    {
+      "name": "controllerSocket",
+      "type": "textfield",
+      "required": false,
+      "default": "/tmp/verge/verge-mihomo.sock",
+      "title": "Controller Socket",
+      "description": "macOS only: Mihomo Unix socket path. Auto-detected by default. Leave empty to use TCP port instead.",
+      "placeholder": "/tmp/verge/verge-mihomo.sock"
     },
     {
       "name": "defaultSearchMode",

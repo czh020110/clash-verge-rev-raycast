@@ -1,5 +1,8 @@
 import { getPreferenceValues } from "@raycast/api";
 import fetch from "node-fetch";
+import * as http from "http";
+import * as net from "net";
+import * as fs from "fs";
 
 // --- Types ---
 
@@ -39,16 +42,58 @@ export interface ClashVersion {
   version: string;
 }
 
+// --- Platform ---
+
+/** Returns true when running on macOS */
+function isMacOS(): boolean {
+  return process.platform === "darwin";
+}
+
 // --- Preferences ---
 
 interface Preferences {
   controllerPort: string;
+  controllerSocket: string;
   secret: string;
 }
 
+// --- Unix Socket Agent for macOS ---
+
+/** Default Unix socket path used by Clash Verge Rev on macOS */
+const DEFAULT_MACOS_SOCKET = "/tmp/verge/verge-mihomo.sock";
+
+/** Cached Unix socket agent (reused across requests) */
+let socketAgent: http.Agent | null = null;
+
+/**
+ * Create or return cached HTTP agent that connects via Unix socket.
+ * Returns null if Unix socket is not available.
+ */
+function getUnixSocketAgent(): http.Agent | null {
+  const prefs = getPreferenceValues<Preferences>();
+  const socketPath = prefs.controllerSocket || DEFAULT_MACOS_SOCKET;
+
+  // Check if socket file exists
+  if (!fs.existsSync(socketPath)) {
+    return null;
+  }
+
+  if (!socketAgent) {
+    socketAgent = new http.Agent({
+      createConnection: () => {
+        const socket = net.createConnection(socketPath);
+        return socket;
+      },
+    });
+  }
+  return socketAgent;
+}
+
+// --- API Base & Headers ---
+
 function getApiBase(): string {
   const prefs = getPreferenceValues<Preferences>();
-  const port = prefs.controllerPort || "9090";
+  const port = prefs.controllerPort || "9097";
   return `http://127.0.0.1:${port}`;
 }
 
@@ -63,24 +108,63 @@ function getHeaders(): Record<string, string> {
   return headers;
 }
 
+/**
+ * Get fetch options with Unix socket agent on macOS, or plain options on Windows.
+ * On macOS, if Unix socket is available, it is preferred over TCP.
+ */
+function getFetchOptions(
+  method: string,
+  headers: Record<string, string>,
+  body?: string,
+): Record<string, unknown> {
+  const opts: Record<string, string | Record<string, string> | http.Agent> = {
+    method,
+    headers,
+  };
+  if (body) {
+    opts.body = body;
+  }
+
+  // On macOS, try Unix socket agent first
+  if (isMacOS()) {
+    const agent = getUnixSocketAgent();
+    if (agent) {
+      opts.agent = agent;
+    }
+  }
+
+  return opts;
+}
+
+// --- Log Streaming ---
+
 /** Get config for streaming logs from Mihomo */
 export function getLogStreamConfig(level = "info"): {
   url: string;
   headers: Record<string, string>;
+  agent?: http.Agent;
 } {
-  return {
+  const headers = getHeaders();
+  const result: { url: string; headers: Record<string, string>; agent?: http.Agent } = {
     url: `${getApiBase()}/logs?level=${level}`,
-    headers: getHeaders(),
+    headers,
   };
+
+  // On macOS, provide Unix socket agent for fetch-based log streaming
+  if (isMacOS()) {
+    const agent = getUnixSocketAgent();
+    if (agent) {
+      result.agent = agent;
+    }
+  }
+
+  return result;
 }
 
 // --- API Methods ---
 
 async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${getApiBase()}${path}`, {
-    method: "GET",
-    headers: getHeaders(),
-  });
+  const res = await fetch(`${getApiBase()}${path}`, getFetchOptions("GET", getHeaders()));
   if (!res.ok) {
     throw new Error(`API Error ${res.status}: ${res.statusText}`);
   }
@@ -88,22 +172,27 @@ async function apiGet<T>(path: string): Promise<T> {
 }
 
 async function apiPut(path: string, body?: unknown): Promise<void> {
-  const res = await fetch(`${getApiBase()}${path}`, {
-    method: "PUT",
-    headers: getHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const res = await fetch(
+    `${getApiBase()}${path}`,
+    getFetchOptions("PUT", getHeaders(), body ? JSON.stringify(body) : undefined),
+  );
   if (!res.ok) {
     throw new Error(`API Error ${res.status}: ${res.statusText}`);
   }
 }
 
 async function apiPatch(path: string, body: unknown): Promise<void> {
-  const res = await fetch(`${getApiBase()}${path}`, {
-    method: "PATCH",
-    headers: getHeaders(),
-    body: JSON.stringify(body),
-  });
+  const res = await fetch(
+    `${getApiBase()}${path}`,
+    getFetchOptions("PATCH", getHeaders(), JSON.stringify(body)),
+  );
+  if (!res.ok) {
+    throw new Error(`API Error ${res.status}: ${res.statusText}`);
+  }
+}
+
+async function apiDelete(path: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}${path}`, getFetchOptions("DELETE", getHeaders()));
   if (!res.ok) {
     throw new Error(`API Error ${res.status}: ${res.statusText}`);
   }
@@ -203,34 +292,59 @@ export function formatDelay(delay: number): string {
   return `${delay}ms`;
 }
 
-/** Get config for streaming connections from Mihomo */
+// --- Connection Streaming ---
+
+/** Polling interval for connection updates when WebSocket is not available (macOS Unix socket) */
+const CONNECTION_POLL_INTERVAL = 1000;
+
+/**
+ * Get config for streaming connections from Mihomo.
+ * On Windows: uses WebSocket (ws://).
+ * On macOS with Unix socket: returns HTTP polling config instead,
+ * because browser WebSocket API doesn't support Unix sockets.
+ */
 export function getConnectionStreamConfig(): {
   url: string;
   headers: Record<string, string>;
+  usePolling?: boolean;
+  pollInterval?: number;
+  agent?: http.Agent;
 } {
   const prefs = getPreferenceValues<Preferences>();
+  const headers = getHeaders();
+
+  // On macOS with Unix socket, use HTTP polling instead of WebSocket
+  if (isMacOS()) {
+    const agent = getUnixSocketAgent();
+    if (agent) {
+      return {
+        url: `${getApiBase()}/connections`,
+        headers,
+        usePolling: true,
+        pollInterval: CONNECTION_POLL_INTERVAL,
+        agent,
+      };
+    }
+  }
+
+  // Windows or macOS with TCP: use WebSocket
   let url = `${getApiBase().replace("http", "ws")}/connections`;
   if (prefs.secret) {
     url += `?token=${encodeURIComponent(prefs.secret)}`;
   }
   return {
     url,
-    headers: getHeaders(),
+    headers,
+    usePolling: false,
   };
 }
 
 /** Close a specific connection */
 export async function closeConnection(id: string): Promise<void> {
-  await fetch(`${getApiBase()}/connections/${id}`, {
-    method: "DELETE",
-    headers: getHeaders(),
-  });
+  await apiDelete(`/connections/${id}`);
 }
 
 /** Close all connections */
 export async function closeAllConnections(): Promise<void> {
-  await fetch(`${getApiBase()}/connections`, {
-    method: "DELETE",
-    headers: getHeaders(),
-  });
+  await apiDelete("/connections");
 }

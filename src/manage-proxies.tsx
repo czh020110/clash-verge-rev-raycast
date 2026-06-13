@@ -240,13 +240,13 @@ export default function ManageProxies(
           <Action
             title="Test Delay"
             icon={Icon.Stopwatch}
-            shortcut={{ modifiers: ["ctrl"], key: "return" }}
+            shortcut={{ macOS: { modifiers: ["cmd"], key: "return" }, Windows: { modifiers: ["ctrl"], key: "return" } }}
             onAction={() => handleTestDelay(opts.proxyName)}
           />
           <Action
             title="Test All Delays"
             icon={Icon.Signal3}
-            shortcut={{ modifiers: ["ctrl", "shift"], key: "return" }}
+            shortcut={{ macOS: { modifiers: ["cmd", "shift"], key: "return" }, Windows: { modifiers: ["ctrl", "shift"], key: "return" } }}
             onAction={() => handleTestAllDelays(opts.group)}
           />
         </ActionPanel.Section>
@@ -254,19 +254,19 @@ export default function ManageProxies(
           <Action
             title="Previous Group"
             icon={Icon.ArrowLeft}
-            shortcut={{ modifiers: ["ctrl"], key: "arrowLeft" }}
+            shortcut={{ macOS: { modifiers: ["cmd"], key: "arrowLeft" }, Windows: { modifiers: ["ctrl"], key: "arrowLeft" } }}
             onAction={() => navigateGroup("prev")}
           />
           <Action
             title="Next Group"
             icon={Icon.ArrowRight}
-            shortcut={{ modifiers: ["ctrl"], key: "arrowRight" }}
+            shortcut={{ macOS: { modifiers: ["cmd"], key: "arrowRight" }, Windows: { modifiers: ["ctrl"], key: "arrowRight" } }}
             onAction={() => navigateGroup("next")}
           />
           <Action
             title="Refresh"
             icon={Icon.ArrowClockwise}
-            shortcut={{ modifiers: ["ctrl"], key: "r" }}
+            shortcut={{ macOS: { modifiers: ["cmd"], key: "r" }, Windows: { modifiers: ["ctrl"], key: "r" } }}
             onAction={fetchProxies}
           />
         </ActionPanel.Section>

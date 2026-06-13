@@ -127,7 +127,7 @@ export default function SwitchMode() {
                   <Action
                     title="Refresh"
                     icon={Icon.ArrowClockwise}
-                    shortcut={{ modifiers: ["cmd"], key: "r" }}
+                    shortcut={{ macOS: { modifiers: ["cmd"], key: "r" }, Windows: { modifiers: ["ctrl"], key: "r" } }}
                     onAction={fetchConfig}
                   />
                 </ActionPanel>

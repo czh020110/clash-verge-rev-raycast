@@ -203,7 +203,7 @@ export default function ManageProfiles(
                     <Action.Push
                       title="Edit Profile"
                       icon={Icon.Pencil}
-                      shortcut={{ modifiers: ["cmd"], key: "e" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "e" }, Windows: { modifiers: ["ctrl"], key: "e" } }}
                       target={
                         <ProfileForm
                           profile={profile}
@@ -215,14 +215,14 @@ export default function ManageProfiles(
                       <Action
                         title="Copy Subscription URL"
                         icon={Icon.Clipboard}
-                        shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+                        shortcut={{ macOS: { modifiers: ["cmd", "shift"], key: "c" }, Windows: { modifiers: ["ctrl", "shift"], key: "c" } }}
                         onAction={() => handleCopyUrl(profile.url!)}
                       />
                     )}
                     <Action
                       title="Refresh List"
                       icon={Icon.ArrowClockwise}
-                      shortcut={{ modifiers: ["cmd"], key: "r" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "r" }, Windows: { modifiers: ["ctrl"], key: "r" } }}
                       onAction={fetchProfiles}
                     />
                   </ActionPanel>
@@ -256,7 +256,7 @@ export default function ManageProfiles(
                     <Action.Push
                       title="Edit Profile"
                       icon={Icon.Pencil}
-                      shortcut={{ modifiers: ["cmd"], key: "e" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "e" }, Windows: { modifiers: ["ctrl"], key: "e" } }}
                       target={
                         <ProfileForm
                           profile={profile}
@@ -267,7 +267,7 @@ export default function ManageProfiles(
                     <Action
                       title="Refresh List"
                       icon={Icon.ArrowClockwise}
-                      shortcut={{ modifiers: ["cmd"], key: "r" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "r" }, Windows: { modifiers: ["ctrl"], key: "r" } }}
                       onAction={fetchProfiles}
                     />
                   </ActionPanel>

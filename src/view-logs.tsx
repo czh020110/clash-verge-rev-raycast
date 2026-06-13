@@ -9,6 +9,8 @@ import {
   Toast,
 } from "@raycast/api";
 import { getLogStreamConfig } from "./utils/api";
+import fetch from "node-fetch";
+import { Readable } from "stream";
 
 interface LogEntry {
   id: number;
@@ -118,13 +120,18 @@ export default function ViewLogs() {
     abortRef.current = controller;
 
     try {
-      const { url, headers } = getLogStreamConfig("info");
+      const { url, headers, agent } = getLogStreamConfig("info");
       console.log("[Logs] Connecting to:", url);
 
-      const response = await fetch(url, {
+      const fetchOpts: Record<string, unknown> = {
         signal: controller.signal,
         headers,
-      });
+      };
+      if (agent) {
+        fetchOpts.agent = agent;
+      }
+
+      const response = await fetch(url, fetchOpts);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -132,19 +139,19 @@ export default function ViewLogs() {
 
       setIsConnected(true);
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("No response body");
-      }
-
       const decoder = new TextDecoder();
       let buffer = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // node-fetch returns a Node.js PassThrough stream (not a Web ReadableStream).
+      // We need to handle both Node.js stream and Web ReadableStream APIs.
+      const body = response.body;
+      if (!body) {
+        throw new Error("No response body");
+      }
 
-        buffer += decoder.decode(value, { stream: true });
+      // Helper to process a chunk of text into log entries
+      const processChunk = (chunk: string) => {
+        buffer += chunk;
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
@@ -173,6 +180,37 @@ export default function ViewLogs() {
             const updated = [...newEntries.reverse(), ...prev];
             return updated.slice(0, MAX_LOGS);
           });
+        }
+      };
+
+      // Check if body is a Node.js Readable stream (node-fetch case)
+      if (body instanceof Readable || typeof (body as Record<string, unknown>).on === "function") {
+        const nodeStream = body as Readable;
+        nodeStream.setEncoding("utf-8");
+        nodeStream.on("data", (chunk: string) => {
+          processChunk(chunk);
+        });
+        nodeStream.on("error", (err: Error) => {
+          console.error("[Logs] Stream error:", err);
+          setIsConnected(false);
+        });
+        nodeStream.on("end", () => {
+          console.log("[Logs] Stream ended");
+          setIsConnected(false);
+        });
+      } else {
+        // Web ReadableStream (browser-style fetch)
+        const reader = (body as ReadableStream).getReader();
+        if (!reader) {
+          throw new Error("Cannot read response body");
+        }
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          processChunk(chunk);
         }
       }
     } catch (error) {
@@ -333,7 +371,7 @@ export default function ViewLogs() {
                     />
                     <Action.CopyToClipboard
                       title="Copy All Visible Logs"
-                      shortcut={{ modifiers: ["ctrl", "shift"], key: "c" }}
+                      shortcut={{ macOS: { modifiers: ["cmd", "shift"], key: "c" }, Windows: { modifiers: ["ctrl", "shift"], key: "c" } }}
                       content={filteredLogs
                         .map(
                           (l) =>
@@ -344,13 +382,13 @@ export default function ViewLogs() {
                     <Action
                       title="Clear Logs"
                       icon={Icon.Trash}
-                      shortcut={{ modifiers: ["ctrl"], key: "x" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "x" }, Windows: { modifiers: ["ctrl"], key: "x" } }}
                       onAction={() => setLogs([])}
                     />
                     <Action
                       title="Reconnect"
                       icon={Icon.ArrowClockwise}
-                      shortcut={{ modifiers: ["ctrl"], key: "r" }}
+                      shortcut={{ macOS: { modifiers: ["cmd"], key: "r" }, Windows: { modifiers: ["ctrl"], key: "r" } }}
                       onAction={() => {
                         setLogs([]);
                         connectToLogs();
